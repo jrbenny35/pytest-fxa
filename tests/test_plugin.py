@@ -33,3 +33,12 @@ def test_destroyed(testdir):
     result = testdir.runpytest()
     result.assert_outcomes(error=1, passed=1)
     assert 'ClientError: Unknown account' in result.stdout.str()
+
+
+def test_commandline_email_option(testdir):
+    testdir.makepyfile("""
+        import pytest
+        def test_pass(fxa_account): pass
+    """)
+    result = testdir.runpytest('--fxa-email', 'testemail@restmail.net')
+    result.assert_outcomes(passed=1)
