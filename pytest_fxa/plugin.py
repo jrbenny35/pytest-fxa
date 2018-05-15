@@ -34,7 +34,7 @@ def fxa_client(fxa_urls):
 
 @pytest.fixture(scope='session')
 def fxa_urls(pytestconfig):
-    return ENVIRONMENT_URLS[os.getenv('FXA_ENV', 'stable')]
+    return ENVIRONMENT_URLS[os.getenv('FXA_ENV', 'stage')]
 
 
 @pytest.fixture(scope='session')
