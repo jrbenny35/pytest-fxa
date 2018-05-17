@@ -39,11 +39,12 @@ def test_commandline_email_option(testdir):
     testdir.makepyfile("""
         import pytest
 
-        def test_account(fxa_account): 
+        def test_account(fxa_account):
             assert 'testemail@restmail.net' in fxa_account.email
     """)
     result = testdir.runpytest('--fxa-email', 'testemail@restmail.net')
     result.assert_outcomes(passed=1)
+
 
 def test_fxa_email_env_variable(testdir, monkeypatch):
     monkeypatch.setenv('FXA_EMAIL', 'testemail@restmail.net')
@@ -55,4 +56,3 @@ def test_fxa_email_env_variable(testdir, monkeypatch):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
-
