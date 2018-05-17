@@ -37,7 +37,7 @@ def fxa_urls(pytestconfig):
     return ENVIRONMENT_URLS[os.getenv('FXA_ENV', 'stage')]
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def fxa_email(request):
     return request.config.getoption('fxa_email') or os.getenv('FXA_EMAIL')
 
