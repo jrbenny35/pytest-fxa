@@ -2,6 +2,18 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import random
+import string
+
+import pytest
+
+
+@pytest.fixture
+def random_email():
+    test_string = ''.join(random.choice(
+        string.ascii_letters + string.digits) for _ in range(8))
+    return '{}@restmail.net'.format(test_string)
+
 
 def test_login(testdir):
     testdir.makepyfile("""
@@ -35,24 +47,28 @@ def test_destroyed(testdir):
     assert 'ClientError: Unknown account' in result.stdout.str()
 
 
-def test_commandline_email_option(testdir):
+def test_commandline_email_option(testdir, monkeypatch, random_email):
+    monkeypatch.setenv('TEST_EMAIL', '{}'.format(random_email))
     testdir.makepyfile("""
-        import pytest
+        import os
 
+        import pytest
         def test_account(fxa_account):
-            assert 'testemail@restmail.net' in fxa_account.email
+            assert os.getenv('TEST_EMAIL') == fxa_account.email
     """)
-    result = testdir.runpytest('--fxa-email', 'testemail@restmail.net')
+    result = testdir.runpytest('--fxa-email', random_email)
     result.assert_outcomes(passed=1)
 
 
-def test_fxa_email_env_variable(testdir, monkeypatch):
-    monkeypatch.setenv('FXA_EMAIL', 'testemail@restmail.net')
+def test_fxa_email_env_variable(testdir, monkeypatch, random_email):
+    monkeypatch.setenv('FXA_EMAIL', '{}'.format(random_email))
     testdir.makepyfile("""
+        import os
+
         import pytest
 
         def test_account(fxa_account):
-            assert 'testemail@restmail.net' in fxa_account.email
+            assert os.getenv('FXA_EMAIL') == fxa_account.email
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
