@@ -53,6 +53,7 @@ def test_commandline_email_option(testdir, monkeypatch, random_email):
         import os
 
         import pytest
+
         def test_account(fxa_account):
             assert os.getenv('TEST_EMAIL') == fxa_account.email
     """)
