@@ -47,16 +47,13 @@ def test_destroyed(testdir):
     assert 'ClientError: Unknown account' in result.stdout.str()
 
 
-def test_commandline_email_option(testdir, monkeypatch, random_email):
-    monkeypatch.setenv('TEST_EMAIL', '{}'.format(random_email))
+def test_commandline_email_option(testdir, random_email):
     testdir.makepyfile("""
-        import os
-
         import pytest
 
         def test_account(fxa_account):
-            assert os.getenv('TEST_EMAIL') == fxa_account.email
-    """)
+            assert '{}' == fxa_account.email
+    """.format(random_email))
     result = testdir.runpytest('--fxa-email', random_email)
     result.assert_outcomes(passed=1)
 
@@ -69,7 +66,7 @@ def test_fxa_email_env_variable(testdir, monkeypatch, random_email):
         import pytest
 
         def test_account(fxa_account):
-            assert os.getenv('FXA_EMAIL') == fxa_account.email
-    """)
+            assert '{}' == fxa_account.email
+    """.format(random_email))
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
