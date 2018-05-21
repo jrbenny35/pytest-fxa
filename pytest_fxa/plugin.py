@@ -38,8 +38,8 @@ def fxa_urls(pytestconfig):
 
 
 @pytest.fixture
-def fxa_email(request):
-    return request.config.getoption('fxa_email') or os.getenv('FXA_EMAIL')
+def fxa_email(pytestconfig):
+    return pytestconfig.getoption('fxa_email') or os.getenv('FXA_EMAIL')
 
 
 @pytest.fixture
