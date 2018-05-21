@@ -61,8 +61,6 @@ def test_commandline_email_option(testdir, random_email):
 def test_fxa_email_env_variable(testdir, monkeypatch, random_email):
     monkeypatch.setenv('FXA_EMAIL', '{}'.format(random_email))
     testdir.makepyfile("""
-        import os
-
         import pytest
 
         def test_account(fxa_account):
