@@ -140,15 +140,3 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
-
-
-@pytest.mark.repeat(10)
-def test_specific_email_can_be_created_multiple_times(testdir):
-    testdir.makepyfile("""
-        import pytest
-
-        def test_account(fxa_account):
-            assert '{}' == fxa_account.email
-    """.format('pytest-fxa@restmail.net'))
-    result = testdir.runpytest('--fxa-email', 'pytest-fxa@restmail.net')
-    result.assert_outcomes(passed=1)
