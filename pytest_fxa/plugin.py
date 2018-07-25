@@ -7,8 +7,10 @@ import logging
 import os
 import random
 import string
+import time
 
 import pytest
+import requests
 from fxa.constants import ENVIRONMENT_URLS
 from fxa.core import Client
 from fxa.errors import ClientError
@@ -48,6 +50,13 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize('fxa_urls', envs, indirect=True)
 
 
+def fxa_cleanup(account=None, fxa_client=None, fxa_account=None):
+    logger = logging.getLogger()
+    account.clear()
+    fxa_client.destroy_account(fxa_account.email, fxa_account.password)
+    logger.info('Removed: {}'.format(fxa_account))
+
+
 @pytest.fixture
 def fxa_client(fxa_urls):
     return Client(fxa_urls['authentication'])
@@ -69,23 +78,42 @@ def fxa_email(pytestconfig):
 
 @pytest.fixture
 def fxa_account(fxa_client, fxa_email):
-    logger = logging.getLogger()
-    account = TestEmailAccount(email=fxa_email)
-    password = ''.join([random.choice(string.ascii_letters) for i in range(8)])
-    FxAccount = collections.namedtuple('FxAccount', 'email password')
-    fxa_account = FxAccount(email=account.email, password=password)
-    session = fxa_client.create_account(fxa_account.email,
-                                        fxa_account.password)
-    logger.info('Created: {}'.format(fxa_account))
-    account.fetch()
-    message = account.wait_for_email(lambda m: 'x-verify-code' in m['headers'])
-    session.verify_email_code(message['headers']['x-verify-code'])
+    verified = False
+    timeout = time.time()
+    while verified is False:
+        if timeout + 30 == time.time():
+            # Verification keeps failing, we should clear the restmail address
+            # because it probably didn't get deleted
+            url = 'http://restmail.net/mail/{}'.format(fxa_email.split('@')[0])
+            requests.delete(url)
+        logger = logging.getLogger()
+        account = TestEmailAccount(email=fxa_email)
+        password = ''.join(
+            [random.choice(string.ascii_letters) for i in range(8)]
+        )
+        FxAccount = collections.namedtuple('FxAccount', 'email password')
+        fxa_account = FxAccount(email=account.email, password=password)
+        session = fxa_client.create_account(fxa_account.email,
+                                            fxa_account.password)
+        logger.info('Created: {}'.format(fxa_account))
+        account.fetch()
+        message = account.wait_for_email(
+            lambda m: 'x-verify-code' in m['headers'] and
+            session.uid == m['headers']['x-uid']
+        )
+        try:
+            session.verify_email_code(message['headers']['x-verify-code'])
+        except ClientError as e:
+            if e.errno in [105]:
+                # Account didn't get verified, delete and try again.
+                fxa_cleanup(account, fxa_client, fxa_account)
+                verified = False
+        else:
+            verified = True
     logger.info('Verified: {}'.format(fxa_account))
     yield fxa_account
     try:
-        account.clear()
-        fxa_client.destroy_account(fxa_account.email, fxa_account.password)
-        logger.info('Removed: {}'.format(fxa_account))
+        fxa_cleanup(account, fxa_client, fxa_account)
     except ClientError as e:
         # 'Unknown Account' error is ok - account already deleted
         # https://github.com/mozilla/fxa-auth-server/blob/master/docs/api.md#response-format
