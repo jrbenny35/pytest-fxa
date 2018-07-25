@@ -80,10 +80,15 @@ def fxa_email(pytestconfig):
 def fxa_account(fxa_client, fxa_email):
     verified = False
     timeout = time.time()
+    logger = logging.getLogger()
     while verified is False:
         if timeout + 30 == time.time():
             # Verification keeps failing, we should clear the restmail address
             # because it probably didn't get deleted
+            logger.info(
+                'Account can not be verified. '
+                'Removing all instances of email {}'.format(fxa_email)
+            )
             url = 'http://restmail.net/mail/{}'.format(fxa_email.split('@')[0])
             requests.delete(url)
         logger = logging.getLogger()
