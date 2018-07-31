@@ -46,7 +46,8 @@ def test_destroyed(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(failed=1)
-    assert 'ClientError: Unknown account' in result.stdout.str()
+    assert 'ServerError: An internal server error occurred' \
+           in result.stdout.str()in result.stdout.str()
 
 
 def test_cleanup_when_destroyed(testdir):
@@ -139,4 +140,16 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
             assert 'stage' in fxa_urls['authentication']
     """)
     result = testdir.runpytest()
+    result.assert_outcomes(passed=1)
+
+
+@pytest.mark.repeat(10)
+def test_specific_email_can_be_created_multiple_times(testdir):
+    testdir.makepyfile("""
+        import pytest
+
+        def test_account(fxa_account):
+            assert '{}' == fxa_account.email
+    """.format('pytest-fxa@restmail.net'))
+    result = testdir.runpytest('--fxa-email', 'pytest-fxa@restmail.net')
     result.assert_outcomes(passed=1)

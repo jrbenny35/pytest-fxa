@@ -7,10 +7,8 @@ import logging
 import os
 import random
 import string
-import time
 
 import pytest
-import requests
 from fxa.constants import ENVIRONMENT_URLS
 from fxa.core import Client
 from fxa.errors import ClientError
@@ -61,6 +59,8 @@ def fxa_cleanup(account, fxa_client, fxa_account):
         # https://github.com/mozilla/fxa-auth-server/blob/master/docs/api.md#response-format
         if e.errno not in [102]:
             raise
+    finally:
+        return
 
 
 @pytest.fixture
@@ -93,11 +93,18 @@ def fxa_account(fxa_client, fxa_email):
                                         fxa_account.password)
     logger.info('Created: {}'.format(fxa_account))
     account.fetch()
-    message = account.wait_for_email(
-        lambda m: 'x-verify-code' in m['headers'] and
-        session.uid == m['headers']['x-uid']
-    )
-    session.verify_email_code(message['headers']['x-verify-code'])
-    logger.info('Verified: {}'.format(fxa_account))
-    yield fxa_account
-    fxa_cleanup(account, fxa_client, fxa_account)
+    try:
+        message = account.wait_for_email(
+            lambda m: 'x-verify-code' in m['headers'] and
+            session.uid == m['headers']['x-uid']
+        )
+        session.verify_email_code(message['headers']['x-verify-code'])
+        logger.info('Verified: {}'.format(fxa_account))
+    except ClientError as e:
+        if e.errno not in [105]:
+            # Verification Failed
+            raise
+    else:
+        yield fxa_account
+    finally:
+        fxa_cleanup(account, fxa_client, fxa_account)
