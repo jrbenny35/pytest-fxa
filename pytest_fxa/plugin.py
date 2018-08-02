@@ -101,7 +101,12 @@ def fxa_account(fxa_client, fxa_email):
         session.verify_email_code(message['headers']['x-verify-code'])
         logger.info('Verified: {}'.format(fxa_account))
     except ClientError:
-            raise
+        raise
+    except TypeError:
+        # Account didn't get verified, server didn't respond or returned `None`
+        raise RuntimeError("The account {} could not be verified.".format(
+            fxa_account.email)
+        )
     else:
         yield fxa_account
     finally:
