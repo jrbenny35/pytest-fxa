@@ -2,10 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import binascii
 import random
+import os
 import string
 
 import pytest
+from fxa.tests.utils import TestEmailAccount
 
 
 @pytest.fixture
@@ -46,8 +49,7 @@ def test_destroyed(testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(failed=1)
-    assert 'ServerError: An internal server error occurred' \
-           in result.stdout.str()in result.stdout.str()
+    assert 'ClientError: Unknown account' in result.stdout.str()
 
 
 def test_cleanup_when_destroyed(testdir):
@@ -143,13 +145,21 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
     result.assert_outcomes(passed=1)
 
 
-@pytest.mark.repeat(10)
-def test_specific_email_can_be_created_multiple_times(testdir):
+def test_cleanup_after_failed_verification(mocker, testdir):
+    def mocking(arg1, arg2):
+        _ = {'headers': {}}
+        _['headers']['x-verify-code'] = '{}'.format(
+            binascii.b2a_hex(os.urandom(16)).decode()
+        )
+        return _
+
+    mocker.patch.object(TestEmailAccount, 'wait_for_email', mocking)
     testdir.makepyfile("""
         import pytest
 
-        def test_account(fxa_account):
-            assert '{}' == fxa_account.email
-    """.format('pytest-fxa@restmail.net'))
-    result = testdir.runpytest('--fxa-email', 'pytest-fxa@restmail.net')
-    result.assert_outcomes(passed=1)
+        def test_login(fxa_account, fxa_client):
+            assert fxa_client.login(fxa_account.email, fxa_account.password)
+    """)
+    result = testdir.runpytest()
+    result.assert_outcomes(error=1)
+    assert 'ClientError: Invalid verification code' in result.stdout.str()
