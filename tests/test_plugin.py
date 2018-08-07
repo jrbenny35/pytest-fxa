@@ -3,8 +3,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import binascii
-import random
 import os
+import random
 import string
 
 import pytest
@@ -146,14 +146,15 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
 
 
 def test_cleanup_after_failed_verification(mocker, testdir):
-    def mocking(arg1, arg2):
+    def mock_headers(arg1, arg2):
+        """Mock x-verify-code header to return an invalid code."""
         _ = {'headers': {}}
         _['headers']['x-verify-code'] = '{}'.format(
             binascii.b2a_hex(os.urandom(16)).decode()
         )
         return _
 
-    mocker.patch.object(TestEmailAccount, 'wait_for_email', mocking)
+    mocker.patch.object(TestEmailAccount, 'wait_for_email', mock_headers)
     testdir.makepyfile("""
         import pytest
 
