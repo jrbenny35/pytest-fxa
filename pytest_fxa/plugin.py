@@ -59,11 +59,9 @@ def fxa_cleanup(account, fxa_client, fxa_account):
         # https://github.com/mozilla/fxa-auth-server/blob/master/docs/api.md#response-format
         if e.errno not in [102]:
             raise
-    finally:
-        return
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def fxa_client(fxa_urls):
     return Client(fxa_urls['authentication'])
 
@@ -98,16 +96,12 @@ def fxa_account(fxa_client, fxa_email):
             lambda m: 'x-verify-code' in m['headers'] and
             session.uid == m['headers']['x-uid']
         )
+        if message is None:
+            raise AssertionError(
+                'An empty message was returned from the server.'
+            )
         session.verify_email_code(message['headers']['x-verify-code'])
         logger.info('Verified: {}'.format(fxa_account))
-    except ClientError:
-        raise
-    except TypeError:
-        # Account didn't get verified, server didn't respond or returned `None`
-        raise RuntimeError("The account {} could not be verified.".format(
-            fxa_account.email)
-        )
-    else:
         yield fxa_account
     finally:
         fxa_cleanup(account, fxa_client, fxa_account)

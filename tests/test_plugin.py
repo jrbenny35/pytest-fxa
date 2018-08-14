@@ -8,7 +8,9 @@ import random
 import string
 
 import pytest
-from fxa.tests.utils import TestEmailAccount
+from fxa.core import Client
+
+from pytest_fxa import plugin
 
 
 @pytest.fixture
@@ -146,15 +148,9 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
 
 
 def test_cleanup_after_failed_verification(mocker, testdir):
-    def mock_headers(arg1, arg2):
-        """Mock x-verify-code header to return an invalid code."""
-        _ = {'headers': {}}
-        _['headers']['x-verify-code'] = '{}'.format(
-            binascii.b2a_hex(os.urandom(16)).decode()
-        )
-        return _
+    mocker.patch.object(Client, 'verify_email_code', None)
+    mocker.spy(plugin, 'fxa_cleanup')
 
-    mocker.patch.object(TestEmailAccount, 'wait_for_email', mock_headers)
     testdir.makepyfile("""
         import pytest
 
@@ -163,18 +159,4 @@ def test_cleanup_after_failed_verification(mocker, testdir):
     """)
     result = testdir.runpytest()
     result.assert_outcomes(error=1)
-    assert 'ClientError: Invalid verification code' in result.stdout.str()
-
-
-def test_cleanup_after_no_verification(mocker, random_email, testdir):
-    mocker.patch.object(TestEmailAccount, 'wait_for_email', None)
-    testdir.makepyfile("""
-        import pytest
-
-        def test_login(fxa_account, fxa_client):
-            assert fxa_client.login(fxa_account.email, fxa_account.password)
-    """)
-    result = testdir.runpytest('--fxa-email', random_email)
-    result.assert_outcomes(error=1)
-    assert 'RuntimeError: The account {} could not be verified'.format(
-        random_email) in result.stdout.str()
+    assert plugin.fxa_cleanup.call_count == 1
