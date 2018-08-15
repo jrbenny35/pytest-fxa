@@ -2,13 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import binascii
-import os
 import random
 import string
 
 import pytest
-from fxa.core import Client
+from fxa.core import Session
 
 from pytest_fxa import plugin
 
@@ -148,7 +146,8 @@ def test_fxa_env_marker_empty(monkeypatch, testdir):
 
 
 def test_cleanup_after_failed_verification(mocker, testdir):
-    mocker.patch.object(Client, 'verify_email_code', None)
+    mock = mocker.Mock(side_effect=Exception)
+    mocker.patch.object(Session, 'verify_email_code', mock)
     mocker.spy(plugin, 'fxa_cleanup')
 
     testdir.makepyfile("""

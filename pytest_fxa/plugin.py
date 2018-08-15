@@ -66,7 +66,7 @@ def fxa_client(fxa_urls):
     return Client(fxa_urls['authentication'])
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def fxa_urls(request):
     env = getattr(request, 'param', os.getenv('FXA_ENV', 'stage'))
     return ENVIRONMENT_URLS[env]
@@ -96,10 +96,7 @@ def fxa_account(fxa_client, fxa_email):
             lambda m: 'x-verify-code' in m['headers'] and
             session.uid == m['headers']['x-uid']
         )
-        if message is None:
-            raise AssertionError(
-                'An empty message was returned from the server.'
-            )
+        assert (message is not None), 'Verification email not found.'
         session.verify_email_code(message['headers']['x-verify-code'])
         logger.info('Verified: {}'.format(fxa_account))
         yield fxa_account
